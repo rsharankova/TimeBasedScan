@@ -25,6 +25,6 @@ How to run a scan with the GUI:
 
 How to record N pulses without settings:
 1) Fill in the following fields:
-   - Select Reading_devices_xxx.csv from file browser
-   - Number of measrements: how many measurements to record. Defaults to 1
-   - Press START SCAN. N measurements 
+ - Select Reading_devices_xxx.csv from file browser
+ - Number of measrements: how many measurements to record. Defaults to 1
+2) Press START SCAN. N measurements will be recorded and data will be automatically saved. 
