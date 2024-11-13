@@ -58,7 +58,7 @@ class SchedulerApp(tk.Tk):
         self.title("Scheduler App")
         self.geometry("635x400")
         self.entries = {}
-        self.options = ['testing','linac_trims','linac_quads','linac_daily_rf_tuning']
+        self.options = ['testing','linac_trims','linac_quads','linac_daily_rf_tuning','400MeV_trims']
         self.selector = tk.StringVar()
         self.selector.set(self.options[0])
         self.role = self.selector.get()

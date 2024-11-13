@@ -1,0 +1,10 @@
+Reading Devices File,/Users/rshara01/WORK/GUI/scanner/Reading_devices_Feb2024_LinacDump.csv
+Device List,L:RFBPAH,L:V1QSET,L:V2QSET,L:V3QSET,L:V4QSET,L:V5QSET,L:RFQPAH
+Nominals,214.80194091796875,-39.87507629394531,-27.500003814697266,-24.800010681152344,-21.299997329711914,-31.985044479370117,159.039306640625
+Amplitude,5,1,1,1,1,1,5
+Number of Periods,15,14,13,12,11,10,9
+Points per Superperiod,299
+Number of Superperiods,4
+Sampling Event,0a
+Number of Measurements,1
+Ramplist File,/Users/rshara01/WORK/GUI/scanner/RFBPAH_V1QSET_V2QSET_V3QSET_V4QSET_V5QSET_RFQPAH.csv

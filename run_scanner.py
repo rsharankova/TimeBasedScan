@@ -57,21 +57,23 @@ def main():
 
     args_dict = {'readfile':'', 'event':'', 'dev_list':[],'role':''}
     parse_args(args_dict)
-    
+
     sc = scanner()
 
     read_list = args_dict['dev_list'] + sc.readList(args_dict['readfile'])
     ramp_list = make_ramplist(sc,args_dict['dev_list'])
     #ramp_list=[]
     Nmeas = 1 # number of measurements to be taken at every setting
-    devs = ['Z:CUBE_Z']
+    devs = ['L:V5QSET']
+    #devs = list(args_dict['dev_list'])
     nominals = sc.get_settings_once(devs)
     print(nominals)
     
-    run(sc,read_list,ramp_list,args_dict['role'],Nmeas,args_dict['event'])
-
-    sc.apply_settings_once(devs,np.add(nominals,-20),args_dict['role'])
-
+    #run(sc,read_list,ramp_list,args_dict['role'],Nmeas,args_dict['event'])
+    args_dict['role'] = 'linac_daily_rf_tuning'
+    sc.apply_settings_once(devs,np.add(nominals,-0.0001),args_dict['role'])
+    time.sleep(3)
+    print(sc.get_settings_once(devs))
     
 if __name__ == "__main__":
     main()

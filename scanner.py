@@ -136,6 +136,7 @@ class scanner:
             #write data
             timestr = time.strftime("%Y%m%d_%H%M%S")
             if len(self.thread_dict[thread_name]['data'])>0:
+                '''
                 self.fill_write_dataframe(self.thread_dict[thread_name]['data'],
                                           [par.split('@')[0] for par in self.thread_dict[thread_name]['param_list']],
                                           os.path.join(os.getcwd(),'%s.csv'%(timestr)))
@@ -143,7 +144,7 @@ class scanner:
                 self.fill_write_dataframe_oneTS(self.thread_dict[thread_name]['data'],
                                                 [par.split('@')[0] for par in self.thread_dict[thread_name]['param_list']],
                                                 os.path.join(os.getcwd(),'%s_oneTS.csv'%(timestr)))
-                '''
+                
             self.thread_dict[thread_name]['stop'].set()
             #Return to nominals
             if len(self.thread_dict[thread_name]['ramp_list'])>0:
