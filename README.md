@@ -31,7 +31,8 @@ How to record N pulses without settings:
 1) Fill in the following fields:
  - Select Reading_devices_xxx.csv from file browser
  - Number of measrements: how many measurements to record. Defaults to 1
-2) Press START SCAN. N measurements will be recorded and data will be automatically saved. 
+2) Press START SCAN. N measurements will be recorded and data will be automatically saved.
+
 OR
 1) Load a full configuration file or fill all fields
 2) Select 'Disable' on Scan Enable
