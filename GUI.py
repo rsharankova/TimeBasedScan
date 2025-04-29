@@ -81,10 +81,13 @@ class SchedulerApp(tk.Tk):
         self.response_matrix_bpm = None
         self.response_df = None
         self.cavities = ['L:RFBPAH', 'L:V1QSET', 'L:V2QSET', 'L:V3QSET', 'L:V4QSET', 'L:V5QSET','L:RFQPAH']
+        self.devices = None
         self.basis = None
         self.linear_coef = None
         self.pinv_coef = None
         self.fraction = 0.
+        self.traj_rms = []
+        self.matrix_rms = []
 
         # Create the tab control
         self.tabControl = ttk.Notebook(self)
@@ -267,17 +270,13 @@ class SchedulerApp(tk.Tk):
         ref_button = ttk.Button(self.tab3, text="Load Files", command=self.load_trajectories)
         ref_button.grid(column=0, row=len(labels), columnspan=1, pady=1)
 
-         # Button for data visualization
-        #plot_button = ttk.Button(self.tab3, text="Plot trajectory", command=self.plot_trajectory)
-        #plot_button.grid(column=1, row=len(labels), columnspan=1, pady=1) 
-
-        # Button for linear fit
-        linear_button = ttk.Button(self.tab3, text="Linear fit", command=self.linear_fit)
-        linear_button.grid(column=1, row=len(labels), columnspan=1, pady=1) 
-
         # Button for Pseudoinverse
         pinv_button = ttk.Button(self.tab3, text="Pseudo inverse", command=self.pinv_fit)
-        pinv_button.grid(column=2, row=len(labels), columnspan=1, pady=1) 
+        pinv_button.grid(column=1, row=len(labels), columnspan=1, pady=1) 
+
+        # Button for linear fit
+        linear_button = ttk.Button(self.tab3, text="Plot RMS", command=self.plot_rms)
+        linear_button.grid(column=2, row=len(labels), columnspan=1, pady=1) 
 
         frac_label = ttk.Label(self.tab3, text='Correction fraction')
         frac_label.grid(column=3, row=0, sticky='EW', padx=2, pady=5)
@@ -340,7 +339,16 @@ class SchedulerApp(tk.Tk):
         else:
             pass
         self.canvas2.draw()
-        
+
+    def plot_rms(self):
+        self.fig2.clf()
+        if self.traj_rms !=[]:
+            self.fig2.gca().plot(self.traj_rms,marker='x')
+            self.fig2.gca().grid()
+        else:
+            pass
+        self.canvas2.draw()
+
     def login(self):
         LogWin = LoginDialog(self)
 
@@ -352,7 +360,8 @@ class SchedulerApp(tk.Tk):
 
     def select_b(self):
         if self.vecmat_selector.get() =='All':
-            self.basis = np.arange(len(self.cavities))
+            #self.basis = np.arange(len(self.cavities))
+            self.basis = np.arange(len(self.devices))
         elif self.vecmat_selector.get() =='Orthogonal':
             self.basis = select_basis(self.response_matrix_bpm)   
         else:
@@ -361,9 +370,9 @@ class SchedulerApp(tk.Tk):
     
     def load_matrix_data(self):
         filename = self.entries['Matrix File'].get()
-        print(filename)
 
-        dataset = load_BPMphase_data_multi(self.cavities,[filename],[],scan=True)
+        #dataset = load_BPMphase_data_multi(self.cavities,[filename],[],scan=True)
+        dataset = load_BPMphase_data_multi(self.devices,[filename],[],scan=True)
         dataset = [df - df.mean() for df in dataset]
         
         self.BPM_positions = remove_noisy_bpm(dataset[0])
@@ -371,15 +380,17 @@ class SchedulerApp(tk.Tk):
 
     def load_trajectories(self):
         filenames = [self.entries['Reference File'].get(),self.entries['Trajectory File'].get()]
+        print(filenames)
+        #dataset = load_BPMphase_data_multi(self.cavities,filenames,[],scan=False)
+        dataset = load_BPMphase_data_multi(self.devices,filenames,[],scan=False)
 
-        dataset = load_BPMphase_data_multi(self.cavities,filenames,[],scan=False)
-        
         self.reference_data = dataset[0].mean()
         self.trajectory_data = (dataset[1] - dataset[0]).mean()
         
-        bad_BPMs = self.trajectory_data.loc[abs(self.trajectory_data) >20.].index.tolist()
+        bad_BPMs = self.trajectory_data.loc[abs(self.trajectory_data) >10.].index.tolist()
         self.BPM_positions = {x:self.BPM_positions[x] for x in self.BPM_positions if x not in bad_BPMs}
-
+        self.traj_rms.append(np.std(self.trajectory_data.loc[list(self.BPM_positions.keys())]))
+        print('Trajectory STD: ',np.std(self.trajectory_data.loc[list(self.BPM_positions.keys())]))
         self.plot_trajectory()
         
     def linear_fit(self):
@@ -387,7 +398,10 @@ class SchedulerApp(tk.Tk):
         self.linear_coef = linear_fit_to_basis(self.trajectory_data.loc[list(self.BPM_positions.keys())],
                                                 vec_list)
         self.fig2.clf()
-        plot_fit_traj(self.fig2.gca(),self.cavities,self.trajectory_data, 
+        #plot_fit_traj(self.fig2.gca(),self.cavities,self.trajectory_data, 
+        #              self.basis, self.response_df,
+        #              self.linear_coef,self.BPM_positions)
+        plot_fit_traj(self.fig2.gca(),self.devices,self.trajectory_data, 
                       self.basis, self.response_df,
                       self.linear_coef,self.BPM_positions)
         self.canvas2.draw()
@@ -396,9 +410,15 @@ class SchedulerApp(tk.Tk):
         self.pinv_coef = matrix_inversion(self.trajectory_data.loc[list(self.BPM_positions.keys())],
                                         self.response_df.iloc[:,list(self.basis)].loc[list(self.BPM_positions.keys())])
                                               
-        print(['%s %.3f'%(self.cavities[b],self.pinv_coef[i]) for i,b in enumerate(self.basis)])
+        print('Corrections coefficients:')
+        #print(['%s %.3f'%(self.cavities[b],self.pinv_coef[i]) for i,b in enumerate(self.basis)])
+        print(['%s %.3f'%(self.devices[b],self.pinv_coef[i]) for i,b in enumerate(self.basis)])
+
         self.fig2.clf()
-        plot_fit_traj(self.fig2.gca(),self.cavities,self.trajectory_data, 
+        #plot_fit_traj(self.fig2.gca(),self.cavities,self.trajectory_data, 
+        #              self.basis, self.response_df,
+        #              self.pinv_coef,self.BPM_positions)
+        plot_fit_traj(self.fig2.gca(),self.devices,self.trajectory_data, 
                       self.basis, self.response_df,
                       self.pinv_coef,self.BPM_positions)
         self.canvas2.draw()
@@ -414,18 +434,24 @@ class SchedulerApp(tk.Tk):
             self.vecmat_selector.grid(column=2,row=3)
             self.select_button.grid(column=3,row=3)
 
-        filtered = apply_FFT_filter(self.matrix_data,self.cavities,list(self.BPM_positions.keys()),tolerance=0.0001)
-        response_matrix = calc_response_matrix(filtered,self.cavities)
+        #filtered = apply_FFT_filter(self.matrix_data,self.cavities,list(self.BPM_positions.keys()),tolerance=0.0001)
+        #response_matrix = calc_response_matrix(filtered,self.cavities)
+        filtered = apply_FFT_filter(self.matrix_data,self.devices,list(self.BPM_positions.keys()),tolerance=0.0001)
+        response_matrix = calc_response_matrix(filtered,self.devices)
         self.response_matrix_bpm = [r[self.BPM_positions.keys()] for r in response_matrix]
-        self.response_df = pd.DataFrame(self.response_matrix_bpm, index = self.cavities, columns = list(self.BPM_positions.keys())).T
+        #self.response_df = pd.DataFrame(self.response_matrix_bpm, index = self.cavities, columns = list(self.BPM_positions.keys())).T
+        self.response_df = pd.DataFrame(self.response_matrix_bpm, index = self.devices, columns = list(self.BPM_positions.keys())).T
+        self.matrix_rms=[np.std(s) for s in self.response_matrix_bpm]
+        print('Response matrix STD:')
+        print(self.matrix_rms)
         
         
     def plot_matrix(self):
         self.fig.clf()
                 
         if self.vectabl.get()=='Vector':
-            plot_basis_vectors(self.fig.gca(),self.response_matrix_bpm,list(self.BPM_positions.values()),
-                           self.cavities,self.basis)
+            #plot_basis_vectors(self.fig.gca(),self.response_matrix_bpm,list(self.BPM_positions.values()),self.cavities,self.basis)
+            plot_basis_vectors(self.fig.gca(),self.response_matrix_bpm,list(self.BPM_positions.values()),self.devices,self.basis)
         else:
             sn.heatmap(self.response_df,ax = self.fig.gca())
         self.canvas.draw()
@@ -436,7 +462,8 @@ class SchedulerApp(tk.Tk):
         else:
             self.fraction = 0.
     
-        devs = [self.cavities[b] for b in self.basis]
+        #devs = [self.cavities[b] for b in self.basis]
+        devs = [self.devices[b] for b in self.basis]
         nominals = self.sc.get_settings_once(devs)
 
         coef = np.zeros(len(devs))
@@ -533,9 +560,13 @@ class SchedulerApp(tk.Tk):
             else:
                 print('Found unknown configuration item',c[0])
 
+            self.devices = [name.strip() for name in self.entries['Device List'].get().split(',') if name!='']
+
 
     def fetch_nominals(self):
         devs = [name.strip() for name in self.entries['Device List'].get().split(',') if name!='']
+        self.devices = devs
+        print(self.devices)
         if len(devs)>0 and devs[0]=='':
             print('Device list empty')
             return

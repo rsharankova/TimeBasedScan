@@ -46,9 +46,9 @@ def load_BPMphase_data_single(cavs,files,dropdevs,scan=True):
     for i, file in enumerate(files):
         if scan:
             #26/02/2024: inverse the logic, keep the read and remove the set
-            df = fetch_data(file,cavs+['BF','BPM','SQ'],'',['%s_S'%cavs[i][2:]])
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','HP','VP','SQ'],'',['%s_S'%cavs[i][2:]])
         else:
-            df = fetch_data(file,cavs+['BF','BPM','SQ'],'',[])
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','HP','VP','SQ'],'',[])
         try:
             df = df.drop(list(df.filter(regex=r'20|B:|SS|SQT')), axis=1)
             df = df.drop(list(df.filter(regex=r'|'.join(dropdevs))),axis=1)
@@ -74,11 +74,11 @@ def load_BPMphase_data_multi(cavs,files,dropdevs,scan=True):
     for i, file in enumerate(files):
         if scan:
             # 26/02/2024: inverse the logic, keep the read and remove the set
-            df = fetch_data(file,cavs+['BF','BPM','SQ'],'',['%s_S'%cav[2:] for cav in cavs])
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','B:HP','B:VP','SQ'],'',['%s_S'%cav[2:] for cav in cavs])
         else:
-            df = fetch_data(file,cavs+['BF','BPM','SQ'],'',[])
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','B:HP','B:VP','SQ'],'',[])
         try:
-            df = df.drop(list(df.filter(regex=r'20|B:|SS|SQT')), axis=1)
+            df = df.drop(list(df.filter(regex=r'20|SS|SQT')), axis=1)
             df = df.drop(list(df.filter(regex=r'|'.join(dropdevs))),axis=1)
         except:
             pass
@@ -101,6 +101,7 @@ def load_BPMphase_data_multi(cavs,files,dropdevs,scan=True):
 ###
 def remove_noisy_bpm(dataset):
     json_file = open('./sensor_positions.json')
+    #json_file = open('./sensor_positions_bph.json')
     if json_file:
         BPM_positions = json.load(json_file)
         
@@ -109,7 +110,7 @@ def remove_noisy_bpm(dataset):
     
     for bpm in BPM_list:
         if bpm in list(dataset.columns):
-            if np.std(dataset[bpm])==0 or np.std(dataset[bpm])>80:
+            if np.std(dataset[bpm])==0 or np.std(dataset[bpm])>20:
                 devices_to_drop.append(bpm)
 
     
@@ -192,7 +193,15 @@ def calc_response_matrix(dfs,cavs):
     return final_response_matrix
 
 #####
-####  FITTING ###                                                                                                                                                                                                                                           
+####  FITTING ###                                                                                                            
+def RMS(x):
+    rms = 0
+    if len(x) >0:
+        rms = np.sqrt(np.mean(x**2))
+    else:
+        pass
+    return rms
+                                                                                                                               
 def linear_fit_to_basis(trajectory, b_vec_list, noise = None):
     X = np.column_stack(b_vec_list)
 
@@ -230,12 +239,12 @@ def select_basis(final_response_matrix,basis_choice_override=None):
 def plot_fft(ax,fft_data,devices,npt,nperiods):
     for dev in devices:
         ax.stem(fft_data['freq_%s'%dev]*npt*nperiods,fft_data['%s'%dev]*2/(npt*nperiods),label='%s'%dev[2:],markerfmt='o')
-        #markerline, stemlines, baseline = ax.stem(fft_data['freq_%s'%dev]*npt*nperiods,fft_data['%s'%dev]*2/(npt*nperiods),label='%s'%dev[2:],markerfmt='.')
+        #marke<rline, stemlines, baseline = ax.stem(fft_data['freq_%s'%dev]*npt*nperiods,fft_data['%s'%dev]*2/(npt*nperiods),label='%s'%dev[2:],markerfmt='.')
         #plt.set(stemlines, 'color', plt.get(markerline,'color'))
         #plt.set(baseline, 'color', plt.get(markerline,'color'))
         #plt.set(stemlines, 'linestyle', 'dotted')
 
-    ax.set_xlim(0,100)
+    ax.set_xlim(0,200)
     #ax.ylim(0,6)
     ax.set_xlabel('Frequency')
     ax.set_ylabel('Amplitude (deg)')
@@ -260,22 +269,39 @@ def plot_fit_traj(ax,cavs,trajectory, basis, response_matrix,coefs,BPM_data,targ
         
     dist_data = list(BPM_data.values())
     BPM_list = list(BPM_data.keys())
+
+    fitted = np.sum([c*response_matrix.iloc[:,basis[i]].loc[BPM_list] for i,c in enumerate(coefs)],axis=0)
+    residual = trajectory.loc[BPM_list] - fitted
+    print('Correction STD: ',np.std(fitted))
+    print('Residual STD: ',np.std(residual))
     
-    ax.plot(dist_data,trajectory.loc[BPM_list], label = target)# + str(target_index))
-    ax.plot(dist_data,coefs[0] * response_matrix.iloc[:,basis[0]].loc[BPM_list] + coefs[1] * response_matrix.iloc[:,basis[1]].loc[BPM_list], label ='1' )#"%.3f * {cavs[basis[0]]} + %.3f * {cavs[basis[1]]}"%tuple(coefs))
+    ax.plot(dist_data,trajectory.loc[BPM_list], label = target)
+    ax.plot(dist_data,fitted,label = 'Fit')
+    ax.plot(dist_data,residual,label = 'Residual')
+    #ax.plot(dist_data,coefs[0] * response_matrix.iloc[:,basis[0]].loc[BPM_list] + coefs[1] * response_matrix.iloc[:,basis[1]].loc[BPM_list], label ='fit' )
     ax.set_ylabel(r"$ \Delta \phi_{BPM}$ (deg)")
     #plt.xticks(rotation = 90)
     ax.set_xlabel("Distance, m")
     ax.legend(loc='upper right')
+    ax.grid()
+
+    textstr = (f'STD\n'+f'Target: {np.std(trajectory.loc[BPM_list]):.3f}\n'
+    f'Fit: {np.std(fitted):.3f}\n'
+    f'Residual: {np.std(residual):.3f}')
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
+        verticalalignment='top', bbox=props)
+    
     return None
 
 ####
 def plot_basis_vectors(ax,response_matrix,dist_data,cavs,show):
-    cavnames = ['Buncher','Tank 1','Tank 2','Tank 3','Tank 4','Tank 5','RFQ']
+    #cavnames = ['Buncher','Tank 1','Tank 2','Tank 3','Tank 4','Tank 5','RFQ']
     e_normed_response = [response_matrix/np.linalg.norm(response_matrix) for response_matrix in response_matrix]
     for index in show:
         #plt.plot(dist_data, e_normed_response[index][:], label = '%s'%cavs[index])
-        ax.plot(dist_data, response_matrix[index][:], label = '%s'%cavnames[index])
+        #ax.plot(dist_data, response_matrix[index][:], label = '%s'%cavnames[index])
+        ax.plot(dist_data, response_matrix[index][:], label = '%s'%cavs[index])
     ax.legend(loc='upper right',ncol=2)
     ax.set_xlabel("Distance, m")
     ax.set_ylabel(r"$ \Delta \phi_{BPM}$ (deg)")

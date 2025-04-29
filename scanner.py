@@ -15,13 +15,18 @@ async def set_many(con,thread_context):
 
         await dpm.start()
         print("Start ramp")
+        count =0
         for rr in thread_context['ramp_list']:
             one_data = [None]*len(thread_context['param_list'])
             setpairs = list(enumerate([n for n in rr if isinstance(n,float)]))
             await dpm.apply_settings(setpairs)
-
+            count = count +1
+            percent_done =float(count)/len(thread_context['ramp_list'])*100.
+            if percent_done %10==0:
+                print('Scan %d percent done'%percent_done)
             try:
                 async for reply in dpm.replies(tmo=float(thread_context['timeout'])):
+
                     if thread_context['stop'].is_set():
                         break
                     thread_context["pause"].wait()
@@ -30,6 +35,7 @@ async def set_many(con,thread_context):
                         with thread_context['lock']:
                             thread_context['data'].append({'tag':reply.tag,'stamp':reply.stamp,'data': reply.data,
                                                            'name':thread_context['param_list'][reply.tag].split('@')[0]})
+            
                     if one_data.count(None)==0:
                         break                    
 
