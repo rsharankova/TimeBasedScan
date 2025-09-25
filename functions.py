@@ -24,7 +24,7 @@ def fetch_data(file,datacols,cuts,setdevs):
     cols = list(dataset.filter(regex='|'.join(datacols)))
     
     # for set points, keep _S_ and drop _R_ if available 
-    # 26/02/2024: inverse the logic, keep the read and remove the set                                                                                                                                                                                                                                   
+    # 26/02/2024: inverse the logic, keep the read and remove the set                                                                                                      
     setdevs = ['L:%s_'%d for d in setdevs]
     cols = [col for col in cols if col not in setdevs]
 
@@ -46,9 +46,9 @@ def load_BPMphase_data_single(cavs,files,dropdevs,scan=True):
     for i, file in enumerate(files):
         if scan:
             #26/02/2024: inverse the logic, keep the read and remove the set
-            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','HP','VP','SQ'],'',['%s_S'%cavs[i][2:]])
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','HP','VP','SQ','LM'],'',['%s_S'%cavs[i][2:]])
         else:
-            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','HP','VP','SQ'],'',[])
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','HP','VP','SQ','LM'],'',[])
         try:
             df = df.drop(list(df.filter(regex=r'20|B:|SS|SQT')), axis=1)
             df = df.drop(list(df.filter(regex=r'|'.join(dropdevs))),axis=1)
@@ -74,9 +74,10 @@ def load_BPMphase_data_multi(cavs,files,dropdevs,scan=True):
     for i, file in enumerate(files):
         if scan:
             # 26/02/2024: inverse the logic, keep the read and remove the set
-            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','B:HP','B:VP','SQ'],'',['%s_S'%cav[2:] for cav in cavs])
+            # 7/05/2025: retain set for TMH/TMV
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','B:HP','B:VP','SQ','LM'],'',['%s_R'%cav[2:] for cav in cavs])
         else:
-            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','B:HP','B:VP','SQ'],'',[])
+            df = fetch_data(file,cavs+['BF','BPM','BPH','BPV','B:HP','B:VP','SQ','LM'],'',[])
         try:
             df = df.drop(list(df.filter(regex=r'20|SS|SQT')), axis=1)
             df = df.drop(list(df.filter(regex=r'|'.join(dropdevs))),axis=1)
@@ -95,7 +96,7 @@ def load_BPMphase_data_multi(cavs,files,dropdevs,scan=True):
             
                 
         dfs.append(df)
-    
+    print(dfs[0].columns)
     return dfs
 
 ###
@@ -127,6 +128,7 @@ def remove_noisy_bpm(dataset):
 ### FFT ###
 def fft_array(array):
     fft_vals = spft.fft(array)
+    #fft_vals = np.abs(spft.fft(array))
     N = len(array)
     freq = spft.fftfreq(N)
     return [freq, fft_vals]
@@ -136,14 +138,17 @@ def apply_FFT(ddfs):
     raw_ffts=[]
 
     for j in range(len(ddfs)):
-        fft_df = ddfs[j].copy(deep=True)
-
-        for current_device in ddfs[j].columns:
+        #fft_df = ddfs[j].copy(deep=True)
+        fft_data = []
+        for i,current_device in enumerate(ddfs[j].columns):
             freq, fft_vals = fft_array(list(ddfs[j][current_device]))
+            fft_data.append(pd.DataFrame(freq,columns=['freq_%s'%current_device]))
+            fft_data.append(pd.DataFrame(np.abs(fft_vals),columns=['%s'%current_device]))
+            #fft_data.append(pd.DataFrame(fft_array(list(ddfs[j][current_device]))).T)
+            #fft_data[i].columns = ['freq_%s'%current_device,current_device]
 
-            fft_df[current_device] = np.abs(fft_vals)
-            fft_df['freq_%s'%current_device] = freq
-        
+        fft_df = pd.concat(fft_data,axis=1)
+
         raw_ffts.append(fft_df)#.apply(np.real))
         
     return raw_ffts

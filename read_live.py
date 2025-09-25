@@ -23,13 +23,17 @@ for a in range(1,8):
         request_list.append('L:D%s%sLM@e,1d,e,0'%(a,b))
 
 '''
+'''
 request_list  =[
     'Z:CUBE_X@e,1d,e,0',
     'Z:CUBE_Y@e,1d,e,0',
     'Z:CUBE_Z@e,1d,e,0',
 ]
-    
-
+'''    
+request_list  =[
+    'ralitsa:test0@e,1d,e,0',
+    'ralitsa:test1@p,1000',
+]
 ############
 # User input
 ############
@@ -108,7 +112,7 @@ async def my_app(con):
     async with acsys.dpm.DPMContext(con) as dpm:
         # Check kerberos credentials and enable settings
         #await dpm.enable_settings(role='linac_daily_rf_tuning')
-		await dpm.enable_settings(role='testing')
+	#await dpm.enable_settings(role='testing')
 
         # Add acquisition requests
         await dpm.add_entries(list(enumerate(request_list)))
@@ -138,7 +142,7 @@ async def my_app(con):
                         break
 
                 print(f'{new_setting=}')
-                await dpm.apply_settings([(0, new_setting)])
+                #await dpm.apply_settings([(0, new_setting)])
 
             elif evt_res.isReadingFor(*list(range(1, len(request_list)))):
                 print(f'Other devices: {evt_res}')
@@ -149,7 +153,7 @@ async def my_app(con):
 
         if initial_setting:
             print(f'Re-Setting to {initial_setting}')
-            await dpm.apply_settings([(0, initial_setting)])
+            #await dpm.apply_settings([(0, initial_setting)])
 
     # Save queries in dataframe
     df =fill_dataframe(data)

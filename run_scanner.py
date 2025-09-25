@@ -10,7 +10,7 @@ def parse_args(args_dict):
                          help="Reading device list file name. (default: Reading_devices.csv)")
     parser.add_argument ('--devlist',  dest='devlist', default=['Z:CUBE_Z'],
                          help="List of devices to scan. (default: Z:CUBE devices")
-    parser.add_argument ('--event',  dest='event', default='@e,1d,e,0',
+    parser.add_argument ('--event',  dest='event', default='@e,52,e,0',
                          help="Event or periodic frequency. (default: '@p,1000')")
     parser.add_argument ('--role',  dest='role', default='testing',
                          help="Setting role. (default: 'testing')")
@@ -60,20 +60,23 @@ def main():
 
     sc = scanner()
 
-    read_list = args_dict['dev_list'] + sc.readList(args_dict['readfile'])
-    ramp_list = make_ramplist(sc,args_dict['dev_list'])
-    #ramp_list=[]
-    Nmeas = 1 # number of measurements to be taken at every setting
-    devs = ['L:V5QSET']
+    #read_list = args_dict['dev_list'] + sc.readList(args_dict['readfile'])
+    #ramp_list = make_ramplist(sc,args_dict['dev_list'])
+    read_list = ['B:400DFT','B:400DF2']
+    ramp_list=[]
+    Nmeas = 10 # number of measurements to be taken at every setting
     #devs = list(args_dict['dev_list'])
+    devs = ['Z:CUBE_X']
+
     nominals = sc.get_settings_once(devs)
     print(nominals)
-    
-    #run(sc,read_list,ramp_list,args_dict['role'],Nmeas,args_dict['event'])
-    args_dict['role'] = 'linac_daily_rf_tuning'
-    sc.apply_settings_once(devs,np.add(nominals,-0.0001),args_dict['role'])
-    time.sleep(3)
-    print(sc.get_settings_once(devs))
+
+    args_dict['role'] = 'testing'
+    run(sc,read_list,ramp_list,args_dict['role'],Nmeas,args_dict['event'])
+
+    #sc.apply_settings_once(devs,np.add(nominals,-0.0001),args_dict['role'])
+    #time.sleep(3)
+    #print(sc.get_settings_once(devs))
     
 if __name__ == "__main__":
     main()
